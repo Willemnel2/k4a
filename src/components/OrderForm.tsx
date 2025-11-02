@@ -10,7 +10,7 @@ interface OrderFormProps {
 }
 
 const OrderForm: React.FC<OrderFormProps> = ({ order, initialDate, onClose }) => {
-  const { clients, addOrder, updateOrder } = useData();
+  const { clients, clientsLoading, addOrder, updateOrder } = useData();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -23,6 +23,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, initialDate, onClose }) =>
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (order) {
@@ -70,10 +71,11 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, initialDate, onClose }) =>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setLoading(true);
+    setError(null);
     try {
       const orderData = {
         ...formData,
@@ -88,6 +90,8 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, initialDate, onClose }) =>
       }
       onClose();
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save order. Please try again.';
+      setError(errorMessage);
       console.error('Error saving order:', error);
     } finally {
       setLoading(false);
@@ -104,7 +108,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, initialDate, onClose }) =>
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
           <h2 className="text-xl font-bold text-gray-900">
             {order ? 'Edit Order' : 'Create New Order'}
           </h2>
@@ -115,6 +119,14 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, initialDate, onClose }) =>
             <X className="w-5 h-5 text-gray-600" />
           </button>
         </div>
+
+        {error && (
+          <div className="p-6 pt-3 pb-0">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800 text-sm">{error}</p>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -137,17 +149,20 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, initialDate, onClose }) =>
 
             <div>
               <label htmlFor="client_id" className="block text-sm font-medium text-gray-700 mb-2">
-                Client *
+                Client * {clientsLoading && <span className="text-gray-500 text-xs">(loading...)</span>}
               </label>
               <select
                 id="client_id"
                 value={formData.client_id}
                 onChange={(e) => handleInputChange('client_id', e.target.value)}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 ${
+                disabled={clientsLoading}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed ${
                   errors.client_id ? 'border-red-300' : 'border-gray-300'
                 }`}
               >
-                <option value="">Select a client</option>
+                <option value="">
+                  {clientsLoading ? 'Loading clients...' : 'Select a client'}
+                </option>
                 {clients.map((client) => (
                   <option key={client.id} value={client.id}>
                     {client.name}

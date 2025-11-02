@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import type { Client, Order, UserProfile } from '../types/database';
@@ -8,6 +8,8 @@ interface DataContextType {
   orders: Order[];
   users: UserProfile[];
   loading: boolean;
+  clientsLoading: boolean;
+  ordersLoading: boolean;
   refreshData: () => Promise<void>;
   addClient: (client: Omit<Client, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>;
   updateClient: (id: string, updates: Partial<Client>) => Promise<void>;
@@ -26,45 +28,58 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [clientsLoading, setClientsLoading] = useState(false);
+  const [ordersLoading, setOrdersLoading] = useState(false);
 
-  const refreshData = async () => {
+  const refreshInProgress = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const refreshData = useCallback(async () => {
     if (!user || !isSupabaseConfigured || !supabase) return;
+    if (refreshInProgress.current) return;
 
     try {
+      refreshInProgress.current = true;
       setLoading(true);
-      
+
       const isAdmin = user.role === 'admin';
-      
+
       // Fetch clients
+      setClientsLoading(true);
       let clientsQuery = supabase
         .from('clients')
         .select('*');
-      
+
       if (!isAdmin) {
         clientsQuery = clientsQuery.eq('user_id', user.id);
       }
-      
+
       const { data: clientsData, error: clientsError } = await clientsQuery
         .order('name');
 
       if (clientsError) throw clientsError;
+      setClients(clientsData || []);
+      setClientsLoading(false);
 
       // Fetch orders with client information
+      setOrdersLoading(true);
       let ordersQuery = supabase
         .from('orders')
         .select(`
           *,
           client:clients(*)
         `);
-      
+
       if (!isAdmin) {
         ordersQuery = ordersQuery.eq('user_id', user.id);
       }
-      
+
       const { data: ordersData, error: ordersError } = await ordersQuery
         .order('installation_date');
 
       if (ordersError) throw ordersError;
+      setOrders(ordersData || []);
+      setOrdersLoading(false);
 
       // Fetch all users if admin
       if (isAdmin) {
@@ -76,21 +91,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (usersError) throw usersError;
         setUsers(usersData || []);
       }
-
-      setClients(clientsData || []);
-      setOrders(ordersData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setClientsLoading(false);
+      setOrdersLoading(false);
     } finally {
       setLoading(false);
+      refreshInProgress.current = false;
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     if (user) {
       refreshData();
     }
-  }, [user]);
+  }, [user, refreshData]);
 
   const addClient = async (clientData: Omit<Client, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     if (!user || !isSupabaseConfigured || !supabase) return;
@@ -168,6 +183,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       orders,
       users,
       loading,
+      clientsLoading,
+      ordersLoading,
       refreshData,
       addClient,
       updateClient,

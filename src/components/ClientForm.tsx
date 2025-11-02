@@ -18,6 +18,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ client, onClose }) => {
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (client) {
@@ -48,10 +49,11 @@ const ClientForm: React.FC<ClientFormProps> = ({ client, onClose }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setLoading(true);
+    setError(null);
     try {
       if (client) {
         await updateClient(client.id, formData);
@@ -60,6 +62,8 @@ const ClientForm: React.FC<ClientFormProps> = ({ client, onClose }) => {
       }
       onClose();
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save client. Please try again.';
+      setError(errorMessage);
       console.error('Error saving client:', error);
     } finally {
       setLoading(false);
@@ -76,7 +80,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ client, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
           <h2 className="text-xl font-bold text-gray-900">
             {client ? 'Edit Client' : 'Add New Client'}
           </h2>
@@ -87,6 +91,14 @@ const ClientForm: React.FC<ClientFormProps> = ({ client, onClose }) => {
             <X className="w-5 h-5 text-gray-600" />
           </button>
         </div>
+
+        {error && (
+          <div className="p-6 pt-3 pb-0">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800 text-sm">{error}</p>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div>
