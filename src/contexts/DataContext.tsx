@@ -33,16 +33,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const refreshInProgress = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const userRef = useRef(user);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   const refreshData = useCallback(async () => {
-    if (!user || !isSupabaseConfigured || !supabase) return;
+    if (!userRef.current || !isSupabaseConfigured || !supabase) return;
     if (refreshInProgress.current) return;
 
     try {
       refreshInProgress.current = true;
       setLoading(true);
 
-      const isAdmin = user.role === 'admin';
+      const isAdmin = userRef.current.role === 'admin';
 
       // Fetch clients
       setClientsLoading(true);
@@ -51,7 +56,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         .select('*');
 
       if (!isAdmin) {
-        clientsQuery = clientsQuery.eq('user_id', user.id);
+        clientsQuery = clientsQuery.eq('user_id', userRef.current.id);
       }
 
       const { data: clientsData, error: clientsError } = await clientsQuery
@@ -71,7 +76,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         `);
 
       if (!isAdmin) {
-        ordersQuery = ordersQuery.eq('user_id', user.id);
+        ordersQuery = ordersQuery.eq('user_id', userRef.current.id);
       }
 
       const { data: ordersData, error: ordersError } = await ordersQuery
@@ -99,13 +104,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       refreshInProgress.current = false;
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     if (user) {
       refreshData();
     }
-  }, [user, refreshData]);
+  }, [user?.id]);
 
   const addClient = async (clientData: Omit<Client, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     if (!user || !isSupabaseConfigured || !supabase) return;
@@ -115,7 +120,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       .insert([{ ...clientData, user_id: user.id }]);
 
     if (error) throw error;
-    await refreshData();
+    setTimeout(() => refreshData(), 100);
   };
 
   const updateClient = async (id: string, updates: Partial<Client>) => {
@@ -125,7 +130,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       .eq('id', id);
 
     if (error) throw error;
-    await refreshData();
+    setTimeout(() => refreshData(), 100);
   };
 
   const deleteClient = async (id: string) => {
@@ -135,7 +140,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       .eq('id', id);
 
     if (error) throw error;
-    await refreshData();
+    setTimeout(() => refreshData(), 100);
   };
 
   const addOrder = async (orderData: Omit<Order, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'client'>) => {
@@ -146,7 +151,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       .insert([{ ...orderData, user_id: user.id }]);
 
     if (error) throw error;
-    await refreshData();
+    setTimeout(() => refreshData(), 100);
   };
 
   const updateOrder = async (id: string, updates: Partial<Order>) => {
@@ -156,7 +161,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       .eq('id', id);
 
     if (error) throw error;
-    await refreshData();
+    setTimeout(() => refreshData(), 100);
   };
 
   const deleteOrder = async (id: string) => {
@@ -166,7 +171,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       .eq('id', id);
 
     if (error) throw error;
-    await refreshData();
+    setTimeout(() => refreshData(), 100);
   };
 
   const getUserName = (userId: string): string => {

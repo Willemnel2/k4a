@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, Save, Calculator } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import type { Order, Client } from '../types/database';
@@ -10,7 +10,7 @@ interface OrderFormProps {
 }
 
 const OrderForm: React.FC<OrderFormProps> = ({ order, initialDate, onClose }) => {
-  const { clients, clientsLoading, addOrder, updateOrder } = useData();
+  const { clients, addOrder, updateOrder } = useData();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -41,35 +41,37 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, initialDate, onClose }) =>
       const orderDate = new Date();
       const installDate = new Date(initialDate);
       const leadTime = Math.max(1, Math.ceil((installDate.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24)));
-      
+
       setFormData(prev => ({
         ...prev,
         lead_time_days: leadTime,
       }));
     }
-  }, [order, initialDate]);
+  }, [order?.id, initialDate]);
 
-  const calculateInstallationDate = () => {
+  const calculateInstallationDate = useCallback(() => {
     const orderDate = new Date(formData.order_date);
     const installDate = new Date(orderDate);
     installDate.setDate(installDate.getDate() + formData.lead_time_days);
     return installDate.toISOString().split('T')[0];
-  };
+  }, [formData.order_date, formData.lead_time_days]);
 
-  const validateForm = () => {
+  const installationDate = useMemo(() => calculateInstallationDate(), [calculateInstallationDate]);
+
+  const validateForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.title.trim()) newErrors.title = 'Title is required';
     if (!formData.description.trim()) newErrors.description = 'Description is required';
     if (!formData.client_id) newErrors.client_id = 'Client is required';
     if (formData.total_amount <= 0) newErrors.total_amount = 'Amount must be greater than 0';
     if (formData.lead_time_days < 1) newErrors.lead_time_days = 'Lead time must be at least 1 day';
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) return;
@@ -96,14 +98,14 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, initialDate, onClose }) =>
     } finally {
       setLoading(false);
     }
-  };
+  }, [formData, order, updateOrder, addOrder, onClose, validateForm, calculateInstallationDate]);
 
-  const handleInputChange = (field: string, value: string | number) => {
+  const handleInputChange = useCallback((field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
-  };
+  }, [errors]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -271,7 +273,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, initialDate, onClose }) =>
             <p className="text-primary-700">
               Based on the order date and lead time, installation is scheduled for:{' '}
               <span className="font-semibold">
-                {new Date(calculateInstallationDate()).toLocaleDateString('en-US', {
+                {new Date(installationDate).toLocaleDateString('en-US', {
                   weekday: 'long',
                   year: 'numeric',
                   month: 'long',

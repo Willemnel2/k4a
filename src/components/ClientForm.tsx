@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Save } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import type { Client } from '../types/database';
@@ -29,25 +29,25 @@ const ClientForm: React.FC<ClientFormProps> = ({ client, onClose }) => {
         address: client.address,
       });
     }
-  }, [client]);
+  }, [client?.id]);
 
-  const validateForm = () => {
+  const validateForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.name.trim()) newErrors.name = 'Name is required';
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     if (!formData.phone.trim()) newErrors.phone = 'Phone is required';
     if (!formData.address.trim()) newErrors.address = 'Address is required';
-    
+
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) return;
@@ -68,14 +68,14 @@ const ClientForm: React.FC<ClientFormProps> = ({ client, onClose }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [formData, client, updateClient, addClient, onClose, validateForm]);
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
-  };
+  }, [errors]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
