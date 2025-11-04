@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Package, Calendar, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Package, Calendar, Settings, LogOut, Building2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Navigation = () => {
@@ -19,7 +19,9 @@ const Navigation = () => {
     <nav className="fixed left-0 top-0 h-full w-64 bg-gradient-to-b from-primary-700 to-primary-800 shadow-lg">
       <div className="p-6 border-b border-primary-600">
         <div className="flex items-center space-x-3">
-          <img src="/k4a logo.jpg" alt="K4A Logo" className="h-12 w-12 object-contain bg-white rounded-lg p-1" />
+          <div className="h-12 w-12 bg-white rounded-lg p-2 flex items-center justify-center">
+            <Building2 className="h-8 w-8 text-primary-700" />
+          </div>
           <h1 className="text-xl font-bold text-white">K4A Orders</h1>
         </div>
       </div>

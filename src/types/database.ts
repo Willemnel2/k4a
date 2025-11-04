@@ -116,6 +116,20 @@ export interface Order {
   client?: Client;
 }
 
+export interface Payment {
+  id: string;
+  user_id: string;
+  client_id: string;
+  order_id: string;
+  amount: number;
+  payment_date: string;
+  payment_method: string;
+  reference_number?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface UserProfile {
   id: string;
   email?: string;
