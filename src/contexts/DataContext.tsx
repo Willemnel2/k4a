@@ -110,17 +110,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       refreshData();
     }
-  }, [user?.id]);
+  }, [user?.id, refreshData]);
 
   const addClient = async (clientData: Omit<Client, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     if (!user || !isSupabaseConfigured || !supabase) return;
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('clients')
-      .insert([{ ...clientData, user_id: user.id }]);
+      .insert([{ ...clientData, user_id: user.id }])
+      .select()
+      .single();
 
     if (error) throw error;
-    setTimeout(() => refreshData(), 100);
+
+    // Optimistically update the clients list
+    setClients(prev => [...prev, data]);
   };
 
   const updateClient = async (id: string, updates: Partial<Client>) => {
@@ -130,7 +134,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       .eq('id', id);
 
     if (error) throw error;
-    setTimeout(() => refreshData(), 100);
+
+    // Optimistically update the clients list
+    setClients(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
   };
 
   const deleteClient = async (id: string) => {
@@ -140,18 +146,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       .eq('id', id);
 
     if (error) throw error;
-    setTimeout(() => refreshData(), 100);
+
+    // Optimistically update the clients list
+    setClients(prev => prev.filter(c => c.id !== id));
   };
 
   const addOrder = async (orderData: Omit<Order, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'client'>) => {
     if (!user) return;
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('orders')
-      .insert([{ ...orderData, user_id: user.id }]);
+      .insert([{ ...orderData, user_id: user.id }])
+      .select(`
+        *,
+        client:clients(*)
+      `)
+      .single();
 
     if (error) throw error;
-    setTimeout(() => refreshData(), 100);
+
+    // Optimistically update the orders list
+    setOrders(prev => [...prev, data]);
   };
 
   const updateOrder = async (id: string, updates: Partial<Order>) => {
@@ -161,7 +176,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       .eq('id', id);
 
     if (error) throw error;
-    setTimeout(() => refreshData(), 100);
+
+    // Optimistically update the orders list
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, ...updates } : o));
   };
 
   const deleteOrder = async (id: string) => {
@@ -171,7 +188,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       .eq('id', id);
 
     if (error) throw error;
-    setTimeout(() => refreshData(), 100);
+
+    // Optimistically update the orders list
+    setOrders(prev => prev.filter(o => o.id !== id));
   };
 
   const getUserName = (userId: string): string => {
